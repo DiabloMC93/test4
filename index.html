@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuestionario Interactivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilo para deshabilitar clics después de responder una pregunta */
+        .answered label {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .question-card {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .nav-button {
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+        }
+        .nav-button:hover {
+            transform: translateY(-2px);
+        }
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .option-label:hover {
+             background-color: #374151; /* slate-700 for hover */
+        }
+        .option-label.selected {
+            background-color: #111618; /* sky-600 */
+            border-color: #000000; /* sky-500 */
+        }
+        .option-label.correct {
+            background-color: #166534 !important; /* green-700 */
+            border-color: #15803d !important; /* green-600 */
+            color: white;
+        }
+        .option-label.incorrect-selected {
+            background-color: #9f1239 !important; /* rose-700 */
+            border-color: #e11d48 !important; /* rose-600 */
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-neutral-900 text-gray-100 min-h-screen p-4 sm:p-8 flex flex-col items-center justify-center">
+
+    <div class="w-full max-w-2xl bg-slate-800 p-6 sm:p-8 rounded-xl shadow-2xl">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-sky-400">Cuestionario de Soporte Vital</h1>
+            <p class="text-slate-400 mt-2">Selecciona una respuesta para cada pregunta.</p>
+            <p class="text-xs text-amber-400 mt-2">
+                <strong>Importante:</strong> CREADO POR JMC.
+            </p>
+        </header>
+
+        <div id="score-board" class="flex justify-around mb-6 p-4 bg-slate-700 rounded-lg shadow-md text-sm sm:text-base">
+            <div>
+                <span class="font-semibold text-green-400">Acertadas: </span>
+                <span id="correct-count" class="text-lg font-bold text-green-300">0</span>
+            </div>
+            <div>
+                <span class="font-semibold text-red-400">Falladas: </span>
+                <span id="incorrect-count" class="text-lg font-bold text-red-300">0</span>
+            </div>
+            <div>
+                <span class="font-semibold text-blue-400">Pendientes: </span>
+                <span id="pending-count" class="text-lg font-bold text-blue-300">0</span>
+            </div>
+        </div>
+
+        <div id="question-area" class="mb-6">
+            <div id="question-counter" class="text-center text-slate-400 mb-4 font-semibold"></div>
+            <div id="current-question-card" class="question-card bg-slate-800 p-0 rounded-lg">
+                </div>
+        </div>
+
+        <div id="navigation-controls" class="flex justify-between items-center mb-6">
+            <button id="prev-btn" onclick="previousQuestion()" class="nav-button bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg shadow-md">Anterior</button>
+            <button id="next-btn" onclick="nextQuestion()" class="nav-button bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg shadow-md">Siguiente</button>
+        </div>
+        
+        <div id="feedback-message" class="text-center h-6 mb-4">
+            </div>
+
+        <div id="final-score-container" class="mt-8 p-6 bg-slate-700 rounded-lg shadow-md text-center hidden">
+            <h2 class="text-2xl font-bold text-sky-400 mb-4">¡Cuestionario Completado!</h2>
+            <p class="text-xl">Tu puntuación final es:</p>
+            <p class="text-3xl font-bold my-2">
+                <span id="final-correct" class="text-green-400">0</span> Acertadas / <span id="final-total" class="text-gray-100">0</span> Totales
+            </p>
+            <button onclick="restartQuiz()" class="mt-6 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-8 rounded-lg shadow transition-colors duration-150 text-lg">
+                Reiniciar Cuestionario
+            </button>
+        </div>
+
+    </div>
+
+    <footer class="mt-10 text-center text-sm text-slate-500">
+        <p>&copy; 2025 Cuestionario Interactivo. Adaptado para fines demostrativos.</p>
+    </footer>
+
+    <script>
+        // --- DATOS DE LAS PREGUNTAS ---
+        // IMPORTANTE: Debes rellenar este array con todas tus preguntas.
+        // 'id': Un identificador único para la pregunta.
+        // 'question': El texto de la pregunta.
+        // 'options': Un array de strings, donde cada string es una opción de respuesta.
+        // 'correctAnswerIndex': El índice (empezando en 0) de la respuesta correcta en el array 'options'.
+        //                     ¡ESTE ES EL CAMPO MÁS IMPORTANTE QUE DEBES CONFIGURAR CORRECTAMENTE!
+        // 'selectedAnswerIndex': null por defecto, se actualiza cuando el usuario responde.
+        // 'isCorrect': null por defecto, se actualiza a true/false después de responder.
+
+        let questionsData = [
+         {"id": 61,
+    "question": "41. En el SVA en el algoritmo de Bradicardia, la correcta:",
+    "options": [
+      "Evalúa utilizando abordaje ABCDE.",
+      "Administrar Adrenalina inmediatamente.",
+      "Preparar para desfibrilación.",
+      "Realizar compresiones torácicas."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 62,
+    "question": "42. ¿Cuando presenta un paciente riesgo de asistolia?:",
+    "options": [
+      "Cuando hay Bloqueo AV Mobitz II",
+      "Bloqueo cardíaco completo con QRS ancho",
+      "Pausa ventricular mayor de 3 seg.",
+      "Todas son correctas"
+    ],
+    "correctAnswerIndex": 3,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 63,
+    "question": "43. Masaje cardíaco en un lactante al realizar RCP, incorrecta:",
+    "options": [
+      "Se comprime el tórax con la punta de los dedos con una fuerza que lo deprima la tercera parte de la profundidad de su pecho",
+      "Frecuencia: 100 veces por minuto",
+      "Se debe hacer con dos reanimadores",
+      "Siempre que se pueda se debe utilizar la técnica de abrazo"
+    ],
+    "correctAnswerIndex": 2,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 64,
+    "question": "44. ¿Qué es necesario hacer tras una desfibrilación?:",
+    "options": [
+      "RCP 2 min.",
+      "Comprobar pulso inmediatamente.",
+      "Administrar Adrenalina.",
+      "Ventilar al paciente."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 65,
+    "question": "45. En la colocación de cánula orofaríngea:",
+    "options": [
+      "Se emplea solo cuando la persona está inconsciente y no respira.",
+      "Se introduce con la concavidad hacia arriba y se gira 180º.",
+      "Su tamaño se mide desde la comisura labial al lóbulo de la oreja.",
+      "Todas son correctas."
+    ],
+    "correctAnswerIndex": 3,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 66,
+    "question": "46. ¿Qué se hace 1º en el SVA en una parada no presenciada?:",
+    "options": [
+      "RCP sin ser necesarios 2 min completos.",
+      "Desfibrilar cuanto antes.",
+      "Administrar Adrenalina.",
+      "Asegurar la vía aérea."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 67,
+    "question": "47. En el SVA, característica incorrecta:",
+    "options": [
+      "Precisa de equipo y entrenamientos adecuados",
+      "Antes de 8 min",
+      "Se inserta como un eslabón más de la cadena de supervivencia",
+      "No exige disponer de un sistema de emergencias médicas."
+    ],
+    "correctAnswerIndex": 3,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 68,
+    "question": "48. En la parada no presenciada, que realizamos 1º:",
+    "options": [
+      "Primero damos masaje y luego damos descarga.",
+      "Primero damos descarga y luego damos masaje.",
+      "Administramos Adrenalina.",
+      "Aseguramos vía aérea."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 69,
+    "question": "49. Con respecto a los ritmos de parada cardíaca \"no desfibrilables\", señala la correcta:",
+    "options": [
+      "La DeM se define únicamente por la presencia de un ritmo con QRS ancho que no es desfibrilable.",
+      "En una DEM con una frecuencia cardiaca de 100 ppm, se recomienda administraras una dosis única de 3mg de Atropina.",
+      "En asistolia, la administración de Adrenalina se hará siempre después de haber detectado y corregido las posibles causas reversibles de la PCR.",
+      "Cuando se hace un diagnóstico de asistolia, debemos buscar la presencia de ondas P (paro ventricular), porque estos casos pueden responder a la estimulación con marcapasos."
+    ],
+    "correctAnswerIndex": 3,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 70,
+    "question": "50. Con respecto a la desfibrilación, señala la incorrecta:",
+    "options": [
+      "En la actualidad no se han demostrado diferencias a favor de la desfibrilación bifásica en relación a la monofásica. Por lo tanto en caso de disponer de ambas opciones se recomienda utilizar cualquiera de ellas pues no aporta beneficio una sobre otra.",
+      "La energía recomendada para la primera descarga bifásica es de 150-200J.",
+      "La energía recomendada para la primera descarga monofásica es de 360J.",
+      "Se debe reanudar la RCP inmediatamente después de cada descarga."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 71,
+    "question": "51. La parada cardíaca no presenciada se caracteriza por:",
+    "options": [
+      "Intentar coger una vía, masaje cardíaco, coger palas.",
+      "Iniciar RCP inmediatamente.",
+      "Priorizar la desfibrilación.",
+      "Administrar fármacos antes de la RCP."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 72,
+    "question": "52. Primer paso en SVA en taquicardia:",
+    "options": [
+      "Evaluación ABCDE.",
+      "Administrar Amiodarona.",
+      "Cardioversión eléctrica.",
+      "Administrar Adenosina."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 73,
+    "question": "53. La energía de un desfibrilador monofásico es de:",
+    "options": [
+      "150J",
+      "200J",
+      "300J",
+      "360J"
+    ],
+    "correctAnswerIndex": 3,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 74,
+    "question": "54. El método para abrir la vía aérea para ventilar:",
+    "options": [
+      "Frente-mentón.",
+      "Tracción mandibular.",
+      "Elevación del mentón.",
+      "Todos son correctos."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 75,
+    "question": "55. Tiempo máximo para verificar el pulso de una persona:",
+    "options": [
+      "5seg.",
+      "10seg.",
+      "15seg.",
+      "20seg."
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 76,
+    "question": "56. En Bradicardia, administrar 500 mcg IV Atropina:",
+    "options": [
+      "Cuando hay presencia de signos adversos y hay riesgo de asistolia.",
+      "Siempre que la FC sea < 60 lpm.",
+      "Solo si hay síncope.",
+      "Solo si hay hipotensión."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 77,
+    "question": "57. ¿Cuáles son los ritmos que se tratan con cardioversión?:",
+    "options": [
+      "TSV inestable, Fibrilación, Flutter auricular y TV.",
+      "Solo Fibrilación Ventricular.",
+      "Solo Asistolia.",
+      "Solo Taquicardia Ventricular sin pulso."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 78,
+    "question": "58. Al realizar RCP en paciente inconsciente por obstrucción de la vía aérea debido a un cuerpo extraño, debemos:",
+    "options": [
+      "Dar más de dos ventilaciones después de las compresiones",
+      "Ladear la cabeza del paciente mientras se hacen las compresiones por si pudiera salir el cuerpo extraño.",
+      "Hacer las compresiones más arriba de la línea intermamilar para empujar el objeto",
+      "No dar ventilaciones bajo ningún concepto"
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 79,
+    "question": "59. Un buen masaje cardíaco:",
+    "options": [
+      "Profundidad de 5-6cm sobre el tórax.",
+      "Frecuencia de 80 compresiones/minuto.",
+      "Interrupciones frecuentes para ventilar.",
+      "Manos superpuestas en el tercio inferior del esternón."
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 80,
+    "question": "60. ¿Cuál es la manera más objetiva de saber que se está realizando un correcto masaje cardíaco?",
+    "options": [
+      "Mirando los complejos del monitor.",
+      "Comprobando el pulso de paciente mientras se realiza el masaje cardíaco por el segundo reanimador.",
+      "Deprimiendo siempre 4 o 5 cm del tórax del paciente.",
+      "Colocándose perpendicularmente a paciente con buena colocación de los brazos y los dedos por encima del apéndice xifoides."
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = { correct: 0, incorrect: 0 };
+
+        const questionCardEl = document.getElementById('current-question-card');
+        const correctCountEl = document.getElementById('correct-count');
+        const incorrectCountEl = document.getElementById('incorrect-count');
+        const pendingCountEl = document.getElementById('pending-count');
+        const finalScoreContainer = document.getElementById('final-score-container');
+        const finalCorrectEl = document.getElementById('final-correct');
+        const finalTotalEl = document.getElementById('final-total');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const questionCounterEl = document.getElementById('question-counter');
+        const feedbackMessageEl = document.getElementById('feedback-message');
+        const questionAreaEl = document.getElementById('question-area');
+        const navigationControlsEl = document.getElementById('navigation-controls');
+        const scoreBoardEl = document.getElementById('score-board');
+
+
+        function displayCurrentQuestion() {
+            if (currentQuestionIndex >= questionsData.length) {
+                showFinalScore();
+                return;
+            }
+            questionAreaEl.classList.remove('hidden');
+            navigationControlsEl.classList.remove('hidden');
+            scoreBoardEl.classList.remove('hidden');
+            finalScoreContainer.classList.add('hidden');
+
+
+            const qData = questionsData[currentQuestionIndex];
+            questionCardEl.style.opacity = 0; // Para efecto de fade
+
+            // Pequeño retraso para que la transición de opacidad sea visible
+            setTimeout(() => {
+                let optionsHTML = '';
+                qData.options.forEach((option, optionIndex) => {
+                    let labelClasses = "option-label block p-3 my-2 rounded-md border border-slate-600 transition-colors duration-150 cursor-pointer";
+                    // Si la pregunta ya fue respondida, aplicar estilos
+                    if (qData.selectedAnswerIndex !== null) {
+                        if (optionIndex === qData.correctAnswerIndex) {
+                            labelClasses += ' correct';
+                        }
+                        if (optionIndex === qData.selectedAnswerIndex) {
+                            labelClasses += qData.isCorrect ? ' selected' : ' incorrect-selected selected';
+                        }
+                    }
+
+                    optionsHTML += `
+                        <label class="${labelClasses}">
+                            <input type="radio" name="question-${qData.id}" value="${optionIndex}" class="mr-3 sr-only" 
+                                   onchange="handleAnswer(${optionIndex})" ${qData.selectedAnswerIndex !== null ? 'disabled' : ''}>
+                            ${String.fromCharCode(97 + optionIndex)}) ${option}
+                        </label>
+                    `;
+                });
+
+                questionCardEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-lg sm:text-xl font-semibold mb-4 text-sky-300">${qData.question}</h3>
+                        <span id="feedback-icon-${qData.id}" class="text-2xl ml-4">
+                            ${qData.selectedAnswerIndex !== null ? (qData.isCorrect ? '<span class="text-green-500">✔</span>' : '<span class="text-red-500">✖</span>') : ''}
+                        </span>
+                    </div>
+                    <div class="options-container space-y-2 ${qData.selectedAnswerIndex !== null ? 'answered' : ''}">
+                        ${optionsHTML}
+                    </div>
+                `;
+                questionCardEl.style.opacity = 1;
+            }, 100); // 100ms para el fade, puedes ajustar
+
+            updateNavigationButtons();
+            updateScoreDisplay();
+            questionCounterEl.textContent = `Pregunta ${currentQuestionIndex + 1} de ${questionsData.length}`;
+            feedbackMessageEl.textContent = ''; // Limpiar mensaje de feedback
+        }
+
+        function handleAnswer(selectedOptionIndex) {
+            const qData = questionsData[currentQuestionIndex];
+            if (qData.selectedAnswerIndex !== null) return; // Ya respondida
+
+            qData.selectedAnswerIndex = selectedOptionIndex;
+            const feedbackIconEl = document.getElementById(`feedback-icon-${qData.id}`);
+
+            if (selectedOptionIndex === qData.correctAnswerIndex) {
+                qData.isCorrect = true;
+                score.correct++;
+                if(feedbackIconEl) feedbackIconEl.innerHTML = '<span class="text-green-500">✔</span>';
+            } else {
+                qData.isCorrect = false;
+                score.incorrect++;
+                if(feedbackIconEl) feedbackIconEl.innerHTML = '<span class="text-red-500">✖</span>';
+            }
+            
+            // Re-renderizar la pregunta actual para mostrar los estilos de correcto/incorrecto y deshabilitar opciones
+            displayCurrentQuestion(); 
+            updateScoreDisplay();
+        }
+
+        function updateNavigationButtons() {
+            prevBtn.disabled = currentQuestionIndex === 0;
+            if (currentQuestionIndex === questionsData.length -1) {
+                 nextBtn.textContent = "Finalizar";
+            } else if (currentQuestionIndex >= questionsData.length) {
+                 nextBtn.classList.add('hidden'); // Ocultar si ya se finalizó
+                 prevBtn.classList.add('hidden');
+            }
+            else {
+                nextBtn.textContent = "Siguiente";
+                nextBtn.classList.remove('hidden');
+                prevBtn.classList.remove('hidden');
+            }
+        }
+        
+        function nextQuestion() {
+            const qData = questionsData[currentQuestionIndex];
+            if (qData.selectedAnswerIndex === null && currentQuestionIndex < questionsData.length) {
+                feedbackMessageEl.textContent = 'Por favor, selecciona una opción antes de continuar.';
+                setTimeout(() => { feedbackMessageEl.textContent = ''; }, 3000);
+                return;
+            }
+
+            if (currentQuestionIndex < questionsData.length - 1) {
+                currentQuestionIndex++;
+                displayCurrentQuestion();
+            } else if (currentQuestionIndex === questionsData.length - 1) {
+                // Última pregunta, mostrar puntaje final
+                currentQuestionIndex++; // Para que la condición de finalización se cumpla
+                showFinalScore();
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                displayCurrentQuestion();
+            }
+        }
+
+        function updateScoreDisplay() {
+            correctCountEl.textContent = score.correct;
+            incorrectCountEl.textContent = score.incorrect;
+            const answeredCount = score.correct + score.incorrect;
+            pendingCountEl.textContent = questionsData.length - answeredCount;
+        }
+
+        function showFinalScore() {
+            questionAreaEl.classList.add('hidden');
+            navigationControlsEl.classList.add('hidden');
+            scoreBoardEl.classList.add('hidden');
+            feedbackMessageEl.textContent = '';
+
+            finalCorrectEl.textContent = score.correct;
+            finalTotalEl.textContent = questionsData.length;
+            finalScoreContainer.classList.remove('hidden');
+            finalScoreContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            score = { correct: 0, incorrect: 0 };
+            questionsData.forEach(q => {
+                q.selectedAnswerIndex = null;
+                q.isCorrect = null;
+            });
+            finalScoreContainer.classList.add('hidden');
+            displayCurrentQuestion();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (questionsData.length > 0) {
+                displayCurrentQuestion();
+            } else {
+                questionCardEl.innerHTML = '<p class="text-center text-red-400">No hay preguntas cargadas. Por favor, añade preguntas en el array `questionsData` en el script.</p>';
+                navigationControlsEl.classList.add('hidden');
+                scoreBoardEl.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
